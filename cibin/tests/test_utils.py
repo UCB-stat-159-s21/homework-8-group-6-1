@@ -342,3 +342,36 @@ def test_N_plus1_exact_CI():
     Nplus1_exact_CI = N_plus1_exact_CI(n11, n10, n01, n00, alpha)
     expected_Nplus1_exact_CI = (-0.3, 0.55)
     assert Nplus1_exact_CI == expected_Nplus1_exact_CI
+
+
+def test_hypergeom_conf_interval():
+    # Basic check
+    test_G = 50
+    low, upp = hypergeom_conf_interval(
+        10, 5, 100, cl=0.95, alternative="two-sided", method="sterne")
+    assert(low < test_G < upp)
+    # Testing that CI range increases with confidence level
+    high = hypergeom_conf_interval(
+        25, 7, 100, cl=.95, alternative="two-sided", method="sterne")
+    low = hypergeom_conf_interval(
+        25, 7, 100, cl=0.5, alternative="two-sided", method="sterne")
+    assert(high[1]-high[0] >= low[1]-low[0])
+    high2 = hypergeom_conf_interval(
+        25, 7, 100, cl=0.95, alternative="two-sided", method="sterne")
+    low2 = hypergeom_conf_interval(
+        25, 7, 100, cl=0.5, alternative="two-sided", method="sterne")
+    assert(high2[1]-high2[0] >= low2[1]-low2[0])
+    # Test integration
+    assert(high == high2)
+    assert(low == low2)
+    # Testing against Clopper-Pearson
+    res = hypergeom_conf_interval(
+        2, 1, 5, cl=0.95, alternative="two-sided", method="sterne")
+    CP = hypergeom_conf_interval(
+        2, 1, 5, cl=0.95, alternative="two-sided")
+    assert(CP[1]-CP[0] >= res[1]-res[0])
+    res2 = hypergeom_conf_interval(
+        2, 2, 5, cl=0.95, alternative="two-sided", method="sterne")
+    CP2 = hypergeom_conf_interval(
+        2, 2, 5, cl=0.95, alternative="two-sided")
+    assert(CP2[1]-CP2[0] >= res2[1]-res2[0])
