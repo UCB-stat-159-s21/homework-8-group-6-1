@@ -9,7 +9,8 @@ outcomes and two treatments.
 import numpy as np
 from scipy.stats import hypergeom
 from itertools import combinations
-from math import comb, floor
+from scipy.optimize import brentq
+from math import comb, floor, ceil
 
 
 def nchoosem(n, m):
@@ -1077,7 +1078,7 @@ def hypergeom_accept(N, m, n, alpha=0.05, randomized=False):
 
 
 def hypergeom_conf_interval(n, x, N, cl=0.975, alternative="two-sided", G=None,
-                            **kwargs):
+                            method = 'clopper-pearson', **kwargs):
     """
     Confidence interval for a hypergeometric distribution parameter G, the
     number of good objects in a population in size N, based on the number x
@@ -1100,6 +1101,8 @@ def hypergeom_conf_interval(n, x, N, cl=0.975, alternative="two-sided", G=None,
         parameter G.
     kwargs : dict
         Key word arguments
+    method : {"clopper-pearson", "sterne"}
+        Algorithm for finding confidence interval
 
     Returns
     -------
@@ -1123,18 +1126,33 @@ def hypergeom_conf_interval(n, x, N, cl=0.975, alternative="two-sided", G=None,
     ci_upp = N
     if alternative == 'two-sided':
         cl = 1 - (1 - cl) / 2
-    if alternative != "upper" and x > 0:
-        while x not in hypergeom_accept(N, ci_low, n, 1 - cl,
-                                        randomized=False):
-            ci_low += 1
-            if ci_low > n:
-                ci_low = n
-                break
-    if alternative != "lower" and x < n:
-        while x not in hypergeom_accept(N, ci_upp, n, 1 - cl,
-                                        randomized=False):
-            ci_upp -= 1
-            if ci_upp < 0:
-                ci_upp = 0
-                break
+    if (method == "clopper-pearson"):
+        if alternative != "upper" and x > 0:
+            def f(q):
+                return cl - hypergeom.cdf(x - 1, N, q, n)
+            while f(G) < 0:
+                G = (G+N)/2
+            ci_low = ceil(brentq(f, 0.0, G, *kwargs))
+
+        if alternative != "lower" and x < n:
+            def f(q):
+                return hypergeom.cdf(x, N, q, n) - (1 - cl)
+            while f(G) < 0:
+                G = G/2
+            ci_upp = floor(brentq(f, G, N, *kwargs))
+    elif (method == "sterne"):
+        if alternative != "upper" and x > 0:
+            while x not in hypergeom_accept(N, ci_low, n, 1 - cl,
+                                            randomized=False):
+                ci_low += 1
+                if ci_low > n:
+                    ci_low = n
+                    break
+        if alternative != "lower" and x < n:
+            while x not in hypergeom_accept(N, ci_upp, n, 1 - cl,
+                                            randomized=False):
+                ci_upp -= 1
+                if ci_upp < 0:
+                    ci_upp = 0
+                    break
     return ci_low, ci_upp
