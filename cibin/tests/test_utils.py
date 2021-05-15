@@ -255,6 +255,19 @@ def test_tau_twosided_ci():
         tau_twosided_ci(2, 6, 8, 0, 0.05, True, 100, 1)
 
 
+def test_sterne_wider_than_tau():
+    n11 = 50
+    n10 = 20
+    n01 = 15
+    n00 = 20
+    tau1 = tau_twosided_ci(n11, n10, n01, n00, 0.05, False, 1, 1000)
+    tau1_width = tau1[0][1] - tau1[0][0]
+    sterne1 = hypergeom_conf_interval(n11+n10, n11+n01, n11+n10+n01+n00, cl=0.90, alternative="two-sided", 
+                                      G=None, method = 'sterne')
+    sterne1_width = sterne1[1] - sterne1[0]
+    assert tau1_width < sterne1_width
+
+    
 def test_ind():
     """Test that ind returns correct boolean."""
     assert ind(5, 4, 6)
