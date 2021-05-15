@@ -9,3 +9,5 @@ With everything in this information being well documented, and being tested acro
 Author Contributions:
 
 Armaan Kalyanpur: Configured the Binder setup for the repository and the Makefile, wrote analysis parts III and IV, helped pythonify the translation of the R code.
+Olivia McNary: Wrote code in cibin.utils by translating Li and Ding R code. Wrote unit tests for all helper and util functions. Implemented the reproduction of Li and Ding method 3 in a notebook. 
+Andrew Kaplan: Did set up around the code for the package. 
