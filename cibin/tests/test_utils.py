@@ -226,30 +226,48 @@ def test_tau_twoside_less_treated():
 
 def test_tau_twosided_ci():
     """Test tau_twosided_ci returns correct taus and N_accepts."""
-    n11 = 2
-    n10 = 6
-    n01 = 8
-    n00 = 0
-    alpha = 0.05
-    exact = True
-    max_combinations = 12870
-    reps = 1
-    twosided_exact = tau_twosided_ci(n11, n10, n01, n00, alpha, exact,
-                                     max_combinations, reps)
-    expected_twosided_exact = ([-14, -5], [[2, 0, 14, 0], [8, 0, 5, 3]],
-                               [12870, 113])
-    exact = False
-    reps = 20
-    twosided_notexact = tau_twosided_ci(n11, n10, n01, n00, alpha, exact,
-                                        max_combinations, reps)
-    expected_twosided_notexact = ([-14, -7], [[2, 0, 14, 0], [8, 0, 7, 1]],
-                                  [20, 48])
-    assert twosided_exact == expected_twosided_exact
-    assert twosided_notexact == expected_twosided_notexact
+    exact1 = tau_twosided_ci(1, 1, 1, 13, 0.05, True, 120, 1)
+    exact2 = tau_twosided_ci(2, 6, 8, 0, 0.05, True, 12870, 1)
+    exact3 = tau_twosided_ci(6, 0, 11, 3, 0.05, True, 38760, 1)
+    exact4 = tau_twosided_ci(6, 4, 4, 6, 0.05, True, 184756, 1)
+    exact5 = tau_twosided_ci(1, 1, 3, 19, 0.05, True, 276, 1)
+    expected_exact1 = ([-1, 14], [[1, 0, 1, 14], [1, 14, 0, 1]], [120, 103])
+    expected_exact2 = ([-14, -5], [[2, 0, 14, 0], [8, 0, 5, 3]], [12870, 113])
+    expected_exact3 = ([-4, 8], [[13, 0, 4, 3], [11, 8, 0, 1]], [38760, 283])
+    expected_exact4 = ([-4, 10], [[5, 1, 5, 9], [5, 11, 1, 3]], [184756, 308])
+    expected_exact5 = ([-3, 20], [[1, 0, 3, 20], [3, 20, 0, 1]], [276, 251])
+    assert exact1 == expected_exact1
+    assert exact2 == expected_exact2
+    assert exact3 == expected_exact3
+    assert exact4 == expected_exact4
+    assert exact5 == expected_exact5
+    notexact1 = tau_twosided_ci(1, 1, 1, 13, 0.05, False, 1, 5000)
+    notexact2 = tau_twosided_ci(2, 6, 8, 0, 0.05, False, 1, 5000)
+    notexact3 = tau_twosided_ci(6, 0, 11, 3, 0.05, False, 1, 5000)
+    notexact4 = tau_twosided_ci(6, 4, 4, 6, 0.05, False, 1, 5000)
+    notexact5 = tau_twosided_ci(1, 1, 3, 19, 0.05, False, 1, 5000)
+    assert exact1[:2] == notexact1[:2]
+    assert exact2[:2] == notexact2[:2]
+    assert exact3[:2] == notexact3[:2]
+    assert exact4[:2] == notexact4[:2]
+    assert exact5[:2] == notexact5[:2]
     with pytest.raises(Exception):
-        tau_twosided_ci(n11, n10, n01, n00, alpha, True, 100, reps)
+        tau_twosided_ci(2, 6, 8, 0, 0.05, True, 100, 1)
 
 
+def test_sterne_wider_than_tau():
+    n11 = 50
+    n10 = 20
+    n01 = 15
+    n00 = 20
+    tau1 = tau_twosided_ci(n11, n10, n01, n00, 0.05, False, 1, 1000)
+    tau1_width = tau1[0][1] - tau1[0][0]
+    sterne1 = hypergeom_conf_interval(n11+n10, n11+n01, n11+n10+n01+n00, cl=0.90, alternative="two-sided", 
+                                      G=None, method = 'sterne')
+    sterne1_width = sterne1[1] - sterne1[0]
+    assert tau1_width < sterne1_width
+
+    
 def test_ind():
     """Test that ind returns correct boolean."""
     assert ind(5, 4, 6)
@@ -337,3 +355,36 @@ def test_N_plus1_exact_CI():
     Nplus1_exact_CI = N_plus1_exact_CI(n11, n10, n01, n00, alpha)
     expected_Nplus1_exact_CI = (-0.3, 0.55)
     assert Nplus1_exact_CI == expected_Nplus1_exact_CI
+
+
+def test_hypergeom_conf_interval():
+    # Basic check
+    test_G = 50
+    low, upp = hypergeom_conf_interval(
+        10, 5, 100, cl=0.95, alternative="two-sided", method="sterne")
+    assert(low < test_G < upp)
+    # Testing that CI range increases with confidence level
+    high = hypergeom_conf_interval(
+        25, 7, 100, cl=.95, alternative="two-sided", method="sterne")
+    low = hypergeom_conf_interval(
+        25, 7, 100, cl=0.5, alternative="two-sided", method="sterne")
+    assert(high[1]-high[0] >= low[1]-low[0])
+    high2 = hypergeom_conf_interval(
+        25, 7, 100, cl=0.95, alternative="two-sided", method="sterne")
+    low2 = hypergeom_conf_interval(
+        25, 7, 100, cl=0.5, alternative="two-sided", method="sterne")
+    assert(high2[1]-high2[0] >= low2[1]-low2[0])
+    # Test integration
+    assert(high == high2)
+    assert(low == low2)
+    # Testing against Clopper-Pearson
+    res = hypergeom_conf_interval(
+        2, 1, 5, cl=0.95, alternative="two-sided", method="sterne")
+    CP = hypergeom_conf_interval(
+        2, 1, 5, cl=0.95, alternative="two-sided")
+    assert(CP[1]-CP[0] >= res[1]-res[0])
+    res2 = hypergeom_conf_interval(
+        2, 2, 5, cl=0.95, alternative="two-sided", method="sterne")
+    CP2 = hypergeom_conf_interval(
+        2, 2, 5, cl=0.95, alternative="two-sided")
+    assert(CP2[1]-CP2[0] >= res2[1]-res2[0])
