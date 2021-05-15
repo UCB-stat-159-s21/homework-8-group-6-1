@@ -1,5 +1,5 @@
 # Add the output image of the analysis portion to this variable to make conversion to pdf easier once done.
-PDFS=analysis-III.pdf
+PDFS=analysis-I.pdf analysis-III.pdf analysis-IV.pdf
 
 pdf: $(PDFS)
 
