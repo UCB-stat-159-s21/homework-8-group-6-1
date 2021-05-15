@@ -9,7 +9,8 @@ outcomes and two treatments.
 import numpy as np
 from scipy.stats import hypergeom
 from itertools import combinations
-from math import comb, floor
+from scipy.optimize import brentq
+from math import comb, floor, ceil
 
 
 def nchoosem(n, m):
@@ -1005,3 +1006,153 @@ def N_plus1_exact_CI(n11, n10, n01, n00, alpha):
     upper = tau_max
     lower = tau_min
     return (lower, upper)
+
+
+def hypergeom_accept(N, m, n, alpha=0.05, randomized=False):
+    '''
+    Acceptance region for a randomized hypergeometric test
+
+    If randomized==True, find the acceptance region for a randomized, exact
+    level-alpha test of the null hypothesis.
+    The acceptance region is the smallest possible.
+    (And not, for instance, symmetric.)
+
+    If randomized==False, find the smallest conservative acceptance region.
+
+    '''
+    assert 0 < alpha < 1, "bad significance level"
+    number_outcomes = min(m, n)
+    x = np.arange(0, number_outcomes+1)
+    # start with all possible outcomes (then remove some)
+    I = list(x)
+    # "frozen" hypergeometric pmf
+    pmf = hypergeom.pmf(x, N, m, n)
+    # smallest outcome still in I
+    bottom = 0
+    # largest outcome still in I
+    top = number_outcomes
+    # outcomes for which the test is randomized
+    J = []
+    # probability of outcomes for which test is randomized
+    p_J = 0
+    # probability of outcomes excluded from I
+    p_tail = 0
+    # need to remove outcomes from the acceptance region
+    while p_tail < alpha:
+        pb = pmf[bottom]
+        pt = pmf[top]
+        # the smaller possibility has smaller probability
+        if pb < pt:
+            J = [bottom]
+            p_J = pb
+            bottom += 1
+        # the larger possibility has smaller probability
+        elif pb > pt:
+            J = [top]
+            p_J = pt
+            top -= 1
+        else:
+            # the two possibilities have equal probability
+            if bottom < top:
+                J = [bottom, top]
+                p_J = pb+pt
+                bottom += 1
+                top -= 1
+            # there is only one possibility left
+            else:
+                J = [bottom]
+                p_J = pb
+                bottom += 1
+        p_tail += p_J
+        # remove outcomes from acceptance region
+        for j in J:
+            I.remove(j)
+    return_val = None
+    if randomized:
+        # probability of accepting H_0 when X in J to get exact level alpha
+        gamma = (p_tail-alpha)/p_J
+        return_val = I, J, gamma
+    else:
+        return_val = I
+    return return_val
+
+
+def hypergeom_conf_interval(n, x, N, cl=0.975, alternative="two-sided", G=None,
+                            method = 'clopper-pearson', **kwargs):
+    """
+    Confidence interval for a hypergeometric distribution parameter G, the
+    number of good objects in a population in size N, based on the number x
+    of good objects in a simple random sample of size n.
+
+    Parameters
+    ----------
+    n : int
+        The number of draws without replacement.
+    x : int
+        The number of "good" objects in the sample.
+    N : int
+        The number of objects in the population.
+    cl : float in (0, 1)
+        The desired confidence level.
+    alternative : {"two-sided", "lower", "upper"}
+        Indicates the alternative hypothesis.
+    G : int in [0, N]
+        Starting point in search for confidence bounds for the hypergeometric
+        parameter G.
+    kwargs : dict
+        Key word arguments
+    method : {"clopper-pearson", "sterne"}
+        Algorithm for finding confidence interval
+
+    Returns
+    -------
+    tuple
+        lower and upper confidence level with coverage (at least)
+        1-alpha.
+
+    Notes
+    -----
+    xtol : float
+        Tolerance
+    rtol : float
+        Tolerance
+    maxiter : int
+        Maximum number of iterations.
+    """
+    assert alternative in ("two-sided", "lower", "upper")
+    if G is None:
+        G = (x / n) * N
+    ci_low = 0
+    ci_upp = N
+    if alternative == 'two-sided':
+        cl = 1 - (1 - cl) / 2
+    if (method == "clopper-pearson"):
+        if alternative != "upper" and x > 0:
+            def f(q):
+                return cl - hypergeom.cdf(x - 1, N, q, n)
+            while f(G) < 0:
+                G = (G+N)/2
+            ci_low = ceil(brentq(f, 0.0, G, *kwargs))
+
+        if alternative != "lower" and x < n:
+            def f(q):
+                return hypergeom.cdf(x, N, q, n) - (1 - cl)
+            while f(G) < 0:
+                G = G/2
+            ci_upp = floor(brentq(f, G, N, *kwargs))
+    elif (method == "sterne"):
+        if alternative != "upper" and x > 0:
+            while x not in hypergeom_accept(N, ci_low, n, 1 - cl,
+                                            randomized=False):
+                ci_low += 1
+                if ci_low > n:
+                    ci_low = n
+                    break
+        if alternative != "lower" and x < n:
+            while x not in hypergeom_accept(N, ci_upp, n, 1 - cl,
+                                            randomized=False):
+                ci_upp -= 1
+                if ci_upp < 0:
+                    ci_upp = 0
+                    break
+    return ci_low, ci_upp
