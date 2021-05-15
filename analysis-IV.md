@@ -5,3 +5,7 @@ The participants are fairly diverse for a study conducted in the US, with 9% bei
 For the safety information, this all seems well documented, with warnings about the possible reactions to taking he cocktail, such as anaphylaxis, and the disclaimers that there have been insufficient tests of the cocktail in pregnant or breastfeeding subjects are good additions to ensure no patients take untested risks. The definition of high risk patients also seem standard, with older subjects being treated as high risk and pre existing conditions such as diabetes also applying.
 
 With everything in this information being well documented, and being tested across a wide age and racial range, and also the caveat of a lack of testing on pregnant and breastfeeding patients, this press release has addressed all of our concerns, except perhaps the breakdown of the groups after being split into placebo and treatment, to ensure that the randomness there was correctly administered. Overall, we would feel comfortable recommending the cocktail to those in areas with widespread COVID outbreaks.
+
+Author Contributions:
+
+Armaan Kalyanpur: Configured the Binder setup for the repository and the Makefile, wrote analysis parts III and IV, helped pythonify the translation of the R code.
